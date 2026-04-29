@@ -2,17 +2,18 @@
 
 import { FieldConfig, FormApp } from "@/components/atom/Form"
 import { useProductStore } from "@/store/product"
-import { Form, Steps } from "antd"
+import { Col, Form, Row, Steps, Button } from "antd"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import SkeletonLoad from "../layouts/Skeleton"
 import CardProduct from "./CardProduct"
 import BoxDefault from "./BoxDefault"
-import { BiLeftArrowCircle, BiPhoneCall, BiRightArrowCircle } from "react-icons/bi"
+import { BiLeftArrowCircle, BiPhoneCall, BiRightArrowCircle, BiShoppingBag } from "react-icons/bi"
 import { MdEmail, MdPayments } from "react-icons/md"
 import { useChannelStore } from "@/store/channel"
 import CardPaymentMethod from "./CardPaymentMethod"
+import { Helper } from "@/utils/Helper"
 
 const CategoryProduct = ({ slug }: { slug: string }) => {
     const hasFetched = useRef(false)
@@ -22,7 +23,7 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
     const [config_payment_method, set_payment_method] = useState<FieldConfig[][]>([])
     const [config_user_data, set_config_user_data] = useState<any>([])
     const { getProductCategoryBySlug, product_detail, current_step, select_product, setSelectedProduct, setCurrentStep } = useProductStore()
-    const { getChannels, channels } = useChannelStore()
+    const { getChannels, channels, select_channel, setSelectedChannel } = useChannelStore()
     const router = useRouter()
 
     const init = async () => {
@@ -104,7 +105,7 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
                     key: 'continue',
                     onClick: async () => {
                         if (current_step === 1) {
-                            await form_2.validateFields(['phone', 'email_recipient'])
+                            await form.validateFields(['phone', 'email_recipient'])
                         }
 
                         setCurrentStep(current_step + 1)
@@ -117,11 +118,60 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
         ]
     ]
 
-    const config_1: FieldConfig[][] = [
-        [
-            {
-                col: 5,
+    useEffect(() => {
+        if (!product_detail) return
+
+        set_config_products([
+            product_detail.product_items.map((item) => ({
+                col: 6,
+                other: <CardProduct item={item} />
+            }))
+        ])
+
+        set_config_user_data(product_detail.product.account_config)
+    }, [product_detail])
+
+    useEffect(() => {
+        if (!channels) return
+
+        set_payment_method([
+            channels.map((item) => ({
+                col: 24,
                 other: (
+                    <div key={item.type}>
+                        <h3 className="bg-gray-300/40 w-fit text-black rounded-md px-4 py-2 mb-3 font-semibold">
+                            <MdPayments className="inline" /> {item.name}
+                        </h3>
+                        <div className="space-y-2">
+                            <div className="grid grid-cols-4 gap-3">
+                                {item.channels.map((channel) => (
+                                    <CardPaymentMethod
+                                        key={channel.code}
+                                        item={channel}
+                                        onClick={(val) => {
+                                            setSelectedChannel(val)
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }))
+        ])
+
+    }, [channels])
+
+    const selectedChannelPrice = select_channel && select_product
+        ? select_channel.type_fee === '%'
+            ? select_product.price + (select_channel.fee * select_product.price)
+            : select_product.price + select_channel.fee
+        : 0
+
+    return (
+        <>
+            <Row gutter={[24, 0]} className={`w-full! ${current_step === 2 && select_channel ? 'pb-36' : ''}`}>
+                <Col span={5}>
                     <div className="sticky top-44">
                         {product_detail ? (
                             <div className="rounded-2xl shadow bg-(--color-4)">
@@ -136,11 +186,8 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
                             <SkeletonLoad />
                         )}
                     </div>
-                )
-            },
-            {
-                col: 19,
-                other: (
+                </Col>
+                <Col span={19}>
                     <div>
                         <BoxDefault>
                             <h3 className="font-semibold text-2xl">{product_detail?.product.display_name}</h3>
@@ -212,60 +259,54 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
                             />
                         )}
                     </div>
-                )
-            }
-        ]
-    ]
+                </Col>
+            </Row>
 
-    useEffect(() => {
-        if (!product_detail) return
-
-        set_config_products([
-            product_detail.product_items.map((item) => ({
-                col: 6,
-                other: <CardProduct item={item} />
-            }))
-        ])
-
-        set_config_user_data(product_detail.product.account_config)
-    }, [product_detail])
-
-    useEffect(() => {
-        if (!channels) return
-
-        set_payment_method([
-            channels.map((item) => ({
-                col: 24,
-                other: (
-                    <div key={item.type}>
-                        <h3 className="bg-gray-300/40 w-fit text-black rounded-md px-4 py-2 mb-3 font-semibold">
-                            <MdPayments className="inline" /> {item.name}
-                        </h3>
-                        <div className="space-y-2">
-                            <div className="grid grid-cols-4 gap-3">
-                                {item.channels.map((channel) => (
-                                    <CardPaymentMethod
-                                        key={channel.code}
-                                        item={channel}
-                                        onClick={(val) => {
-                                        }}
-                                    />
-                                ))}
+            {current_step === 2 && (
+                <div className="fixed bottom-0 left-0 max-w-7xl mx-auto right-0 z-50 bg-(--color-3) border-[1.5px] border-dotted border-gray-700 px-10 py-4 shadow-2xl">
+                    <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-y-1">
+                            <div className="flex items-center gap-x-2">
+                                <BiShoppingBag className="text-blue-400 text-xl" />
+                                <span className="text-blue-400 font-bold text-xl">
+                                    {Helper.formatRupiah(selectedChannelPrice)}
+                                </span>
+                            </div>
+                            <div className="text-sm font-semibold text-white">
+                                {select_product?.product_name}
+                                {form_2.getFieldValue('phone') && (
+                                    <span className="text-gray-300"> • {form_2.getFieldValue('phone')}</span>
+                                )}
                             </div>
                         </div>
+
+                        <div className="space-x-3">
+                            <Button
+                                size="large"
+                                className="bg-white! hover:bg-gray-300! text-black! rounded-full! w-44! font-semibold! shadow-xl! border-2! border-[#4B59C4]! transition! duration-300!"
+                                onClick={() => {
+                                    setCurrentStep(1)
+                                }}
+                            >
+                                Kembali
+                            </Button>
+                            <Button
+                                disabled={!select_channel}
+                                size="large"
+                                className="bg-[#5E6AD2]! disabled:bg-gray-400! text-white! rounded-full! w-44! font-semibold! shadow-xl! border-0! hover:bg-[#4B59C4]! transition! duration-300!"
+                                onClick={async () => {
+                                    if (current_step == 2) {
+                                        await form.validateFields(['phone', 'email_recipient'])
+                                    }
+                                }}
+                            >
+                                Bayar Sekarang
+                            </Button>
+                        </div>
                     </div>
-                )
-            }))
-        ])
-
-    }, [channels])
-
-    return (
-        <FormApp
-            form={form}
-            config={config_1}
-        />
-
+                </div>
+            )}
+        </>
     )
 }
 
