@@ -46,7 +46,7 @@ export const ModalApp: FC<Props> = ({ modals }) => {
                   </Button>
                 )}
                 {!hideCancel && (
-                  <Button onClick={onCancel}>
+                  <Button onClick={onCancel} type="primary" color="danger">
                     {labelCancel ?? "Cancel"}
                   </Button>
                 )}

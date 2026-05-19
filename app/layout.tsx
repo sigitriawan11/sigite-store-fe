@@ -44,8 +44,18 @@ export default function RootLayout({
                 activeBorderColor: '#BFC6C4',
                 activeOutlineColor: '#BFC6C4',
                 hoverBorderColor: '#BFC6C4',
+              },
+              Notification: {
+                colorText: 'black',
+                colorInfoText: 'black',
+                colorErrorText: 'black',
+                colorSuccessText: 'black',
+                colorWarningText: 'black',
+                colorTextHeading: 'black',
+              },
+              Modal: {
+                titleColor: 'black',
               }
-
             }
           }}>
           <NotificationProvider>

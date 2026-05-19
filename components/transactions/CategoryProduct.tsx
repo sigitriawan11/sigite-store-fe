@@ -2,7 +2,8 @@
 
 import { FieldConfig, FormApp } from "@/components/atom/Form"
 import { useProductStore } from "@/store/product"
-import { Col, Form, Row, Steps, Button } from "antd"
+import { usePaymentStore } from "@/store/payment"
+import { Col, Form, Row, Steps, Button, Modal } from "antd"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
@@ -14,6 +15,9 @@ import { MdEmail, MdPayments } from "react-icons/md"
 import { useChannelStore } from "@/store/channel"
 import CardPaymentMethod from "./CardPaymentMethod"
 import { Helper } from "@/utils/Helper"
+import { useNotification } from "../provider/NotificationProvider"
+import ConfirmOrder from "./ConfirmOrder"
+
 
 const CategoryProduct = ({ slug }: { slug: string }) => {
     const hasFetched = useRef(false)
@@ -22,8 +26,16 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
     const [config_products, set_config_products] = useState<FieldConfig[][]>([])
     const [config_payment_method, set_payment_method] = useState<FieldConfig[][]>([])
     const [config_user_data, set_config_user_data] = useState<any>([])
+    const [confirmModalVisible, setConfirmModalVisible] = useState(false)
+    const [pendingOrderPayload, setPendingOrderPayload] = useState<{
+        phone: string;
+        email_recipient: string;
+        accountData: Record<string, string>;
+    } | null>(null)
     const { getProductCategoryBySlug, product_detail, current_step, select_product, setSelectedProduct, setCurrentStep } = useProductStore()
     const { getChannels, channels, select_channel, setSelectedChannel } = useChannelStore()
+    const notif = useNotification()
+    const { createOrder, loading: paymentLoading } = usePaymentStore()
     const router = useRouter()
 
     const init = async () => {
@@ -31,6 +43,28 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
         await getChannels()
         if (!data) {
             router.push('/')
+        }
+    }
+
+    const handleConfirmOrder = async () => {
+        if (!pendingOrderPayload) return
+        try {
+            const result = await createOrder({
+                product_code: select_product!.code,
+                channel_code: select_channel!.code,
+                phone: pendingOrderPayload.phone,
+                email: pendingOrderPayload.email_recipient,
+                account_data: pendingOrderPayload.accountData,
+            })
+            setConfirmModalVisible(false)
+            router.push(`/invoice/${result.ref_id}`)
+        } catch (err: any) {
+            if (err?.message) {
+                notif.error({
+                    message: 'Error',
+                    description: err.message
+                })
+            }
         }
     }
 
@@ -105,7 +139,7 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
                     key: 'continue',
                     onClick: async () => {
                         if (current_step === 1) {
-                            await form.validateFields(['phone', 'email_recipient'])
+                            await form_2.validateFields(['phone', 'email_recipient'])
                         }
 
                         setCurrentStep(current_step + 1)
@@ -180,6 +214,7 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
                                     alt={product_detail!.product.display_name}
                                     width={250}
                                     height={200}
+                                    priority
                                 />
                             </div>
                         ) : (
@@ -253,10 +288,12 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
                             </BoxDefault>
                         )}
                         {current_step === 2 && (
-                            <FormApp
-                                config={config_payment_method}
-                                form={form_2}
-                            />
+                            <div className="mb-20">
+                                <FormApp
+                                    config={config_payment_method}
+                                    form={form_2}
+                                />
+                            </div>
                         )}
                     </div>
                 </Col>
@@ -288,24 +325,84 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
                                     setCurrentStep(1)
                                 }}
                             >
-                                Kembali
+                                back
                             </Button>
                             <Button
                                 disabled={!select_channel}
                                 size="large"
                                 className="bg-[#5E6AD2]! disabled:bg-gray-400! text-white! rounded-full! w-44! font-semibold! shadow-xl! border-0! hover:bg-[#4B59C4]! transition! duration-300!"
                                 onClick={async () => {
+                                    await form.validateFields()
                                     if (current_step == 2) {
-                                        await form.validateFields(['phone', 'email_recipient'])
+                                        const { phone, email_recipient } = form_2.getFieldsValue(['phone', 'email_recipient'])
+
+                                        if (!phone || !email_recipient) {
+                                            notif.error({
+                                                message: 'Validation Error',
+                                                description: 'Phone number and email are required'
+                                            })
+                                            return
+                                        }
+
+                                        const accountData: Record<string, string> = form.getFieldsValue()
+                                        console.log('Account Data:', accountData)
+                                        setPendingOrderPayload({ phone, email_recipient, accountData })
+                                        setConfirmModalVisible(true)
                                     }
                                 }}
                             >
-                                Bayar Sekarang
+                                Pay Now
                             </Button>
                         </div>
                     </div>
                 </div>
             )}
+
+            <Modal
+                title={
+                    (<h3 className="text-lg font-semibold">Confirm Order</h3>)
+                }
+                open={confirmModalVisible}
+                onCancel={() => setConfirmModalVisible(false)}
+                footer={
+                    <div className="flex justify-end gap-x-2">
+                        <Button
+                            onClick={() => setConfirmModalVisible(false)}
+                            className="rounded-full! border-gray-400! text-black! hover:bg-gray-300! transition! duration-300!"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="primary"
+                            loading={paymentLoading}
+                            disabled={paymentLoading}
+                            onClick={handleConfirmOrder}
+                            className="bg-[#5E6AD2]! hover:bg-[#4B59C4]! rounded-full! border-0!"
+                        >
+                            Confirm & Pay
+                        </Button>
+                    </div>
+                }
+            >
+                {pendingOrderPayload && (
+                    <ConfirmOrder
+                        title="Please review your order before proceeding to payment. Ensure the information you entered is correct."
+                        title_account="Account Details"
+                        account={Object.entries(pendingOrderPayload.accountData).map(([key, value]) => ({
+                            label: key,
+                            value: String(value ?? '')
+                        }))}
+                        title_order_detail="Order Details"
+                        order_detail={[
+                            { label: 'Product', value: select_product?.product_name ?? '' },
+                            { label: 'Payment Method', value: select_channel?.name ?? '' },
+                            { label: 'Phone', value: pendingOrderPayload.phone },
+                            { label: 'Email', value: pendingOrderPayload.email_recipient },
+                        ]}
+                        total={Helper.formatRupiah(selectedChannelPrice)}
+                    />
+                )}
+            </Modal>
         </>
     )
 }
