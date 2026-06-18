@@ -132,7 +132,18 @@ const LoginComp = () => {
         ]
     ]
 
-    const handleSubmit = (values: any) => {
+    const handleSubmit = async (values: any) => {
+        const success = await useAuthStore.getState().login(values)
+
+        if (success) {
+            router.push("/dashboard");
+        } else {
+            const error = useAuthStore.getState().error
+            notif.error({
+                title: 'Error',
+                description: error || 'Login failed. Please try again.'
+            })
+        }
     };
 
     return (
@@ -149,7 +160,7 @@ const LoginComp = () => {
                 form={form}
                 onFinish={handleSubmit}
             />
-            <div className="relative flex items-center mb-5">
+            <div className="relative flex items-center my-3">
                 <div className="flex grow border-t border-gray-400"></div>
 
                 <span className="flex shrink mx-4 text-gray-600 text-sm">Or Login With</span>
