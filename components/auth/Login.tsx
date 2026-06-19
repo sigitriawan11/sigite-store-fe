@@ -17,12 +17,27 @@ import { MdEmail } from "react-icons/md";
 
 const LoginComp = () => {
     const [form] = Form.useForm();
-    const { loginProvider } = useAuthStore()
+    const { loginProvider, checkSession, isAuthenticated, isHydrated } = useAuthStore()
     const notif = useNotification()
     const hasHandled = useRef(false);
+    const hasCheckedSession = useRef(false);
 
     const router = useRouter();
     const params = useSearchParams();
+
+    
+    
+    
+    useEffect(() => {
+        if (hasCheckedSession.current) return;
+        hasCheckedSession.current = true;
+
+        checkSession().then((valid) => {
+            if (valid) {
+                router.replace("/admin/dashboard");
+            }
+        });
+    }, []);
 
     useEffect(() => {
         if (hasHandled.current) return;
@@ -136,7 +151,7 @@ const LoginComp = () => {
         const success = await useAuthStore.getState().login(values)
 
         if (success) {
-            router.push("/dashboard");
+            router.push("/admin/dashboard");
         } else {
             const error = useAuthStore.getState().error
             notif.error({

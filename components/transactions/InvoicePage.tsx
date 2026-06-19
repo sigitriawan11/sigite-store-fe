@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import { useInvoiceStore } from "@/store/invoice"
-import { Col, Row, Steps, Tag, Button, Divider, Collapse, Skeleton, Alert, QRCode, Typography, message } from "antd"
+import { Col, Row, Steps, Tag, Button, Divider, Collapse, Skeleton, Alert, QRCode, Typography } from "antd"
 import { CheckCircleFilled, ClockCircleFilled, SyncOutlined } from "@ant-design/icons"
 import Image from "next/image"
 import BoxDefault from "./BoxDefault"
@@ -11,6 +11,8 @@ import { InvoiceResult, ProviderStatus, TransactionStatus } from "@/types/paymen
 import { BiCopy, BiDownload, BiSupport } from "react-icons/bi"
 import { MdEmail, MdPhone } from "react-icons/md"
 import { HiOutlineReceiptRefund } from "react-icons/hi"
+import { useNotification } from "../provider/NotificationProvider"
+import { useWebSocket } from "@/hooks/useWebSocket"
 
 const { Title } = Typography
 
@@ -47,10 +49,10 @@ const STATUS_CONFIG: Record<TransactionStatus, { color: string; label: string }>
     PENDING: { color: "orange", label: "Unpaid" },
     PAID: { color: "green", label: "Paid" },
     FAILED: { color: "red", label: "Failed" },
-    EXPIRED: { color: "default", label: "Expired" },
+    EXPIRED: { color: "red", label: "Expired" },
 }
 
-const PROVIDER_STATUS_CONFIG: Record<ProviderStatus, {
+const PROVIDER_STATUS_CONFIG: Record<string, {
     color: string
     bgClass: string
     borderClass: string
@@ -88,15 +90,21 @@ const PROVIDER_STATUS_CONFIG: Record<ProviderStatus, {
     },
 }
 
-const CopyButton = ({ value }: { value: string }) => (
-    <BiCopy
-        className="inline cursor-pointer text-gray-400 hover:text-white ml-2 transition-colors"
-        onClick={() => {
-            navigator.clipboard.writeText(value)
-            message.success("Copied to clipboard")
-        }}
-    />
-)
+const CopyButton = ({ value }: { value: string }) => {
+    const notification = useNotification()
+    return (
+        <BiCopy
+            className="inline cursor-pointer text-gray-400 hover:text-white ml-2 transition-colors"
+            onClick={() => {
+                navigator.clipboard.writeText(value)
+                notification.success({
+                    title: 'Success',
+                    description: "Copied to clipboard"
+                })
+            }}
+        />
+    )
+}
 
 const OrderSummary = ({ invoice }: { invoice: InvoiceResult }) => {
     const statusCfg = STATUS_CONFIG[invoice.status]
@@ -119,7 +127,6 @@ const OrderSummary = ({ invoice }: { invoice: InvoiceResult }) => {
             label: "Order Status",
             value: (
                 <Tag
-                    icon={providerCfg.icon}
                     style={{ color: providerCfg.color, borderColor: providerCfg.color, background: "transparent" }}
                     className="flex items-center gap-1"
                 >
@@ -221,14 +228,19 @@ const VaPayment = ({ invoice }: { invoice: InvoiceResult }) => (
             <CopyButton value={invoice.va_number!} />
         </div>
         <div className="flex items-center justify-between">
-            <Image src={invoice.channel.image} alt={invoice.channel.name} width={80} height={32} className="object-contain" />
+            {invoice.channel.image ? (
+                <Image src={invoice.channel.image} alt={invoice.channel.name} width={80} height={32} className="object-contain rounded" />
+            ) : (
+                <span className="text-sm text-gray-400">{invoice.channel.name}</span>
+            )}
             <span className="text-sm text-gray-400">{invoice.channel.name}</span>
         </div>
     </div>
 )
 
 const PaidStatusPanel = ({ providerStatus }: { providerStatus: ProviderStatus }) => {
-    const cfg = PROVIDER_STATUS_CONFIG[providerStatus]
+    const cfg = providerStatus ? PROVIDER_STATUS_CONFIG[providerStatus] : null
+    if (!cfg) return null
     return (
         <div className={`flex items-start gap-4 rounded-2xl border p-5 ${cfg.bgClass} ${cfg.borderClass}`}>
             <div className="shrink-0 mt-0.5">{cfg.icon}</div>
@@ -251,7 +263,11 @@ const AmountDisplay = ({ invoice }: { invoice: InvoiceResult }) => (
                 <CopyButton value={String(invoice.amount)} />
             </div>
         </div>
-        <Image src={invoice.channel.image} alt={invoice.channel.name} width={60} height={24} className="object-contain opacity-70" />
+        {invoice.channel.image ? (
+            <Image src={invoice.channel.image} alt={invoice.channel.name} width={60} height={24} className="object-contain opacity-70 rounded" />
+        ) : (
+            <span className="text-sm text-gray-400 truncate max-w-[120px]">{invoice.channel.name}</span>
+        )}
     </div>
 )
 
@@ -260,7 +276,8 @@ const STEP_TITLES = ["Make Payment", "Transaction Processing", "Transaction Succ
 const currentStepFor = (status: TransactionStatus, providerStatus: ProviderStatus | null): number => {
     if (status !== "PAID") return 0
     if (!providerStatus) return 1
-    return PROVIDER_STATUS_CONFIG[providerStatus].step
+    const cfg = PROVIDER_STATUS_CONFIG[providerStatus]
+    return cfg ? cfg.step : 1
 }
 
 const isPaidDone = (status: TransactionStatus) => status === "PAID"
@@ -281,7 +298,7 @@ const PaymentPanel = ({ invoice }: { invoice: InvoiceResult }) => {
                             {title}
                         </span>
                     ),
-                    description: (() => {
+                    content: (() => {
                         if (i === 0 && !isPaid) {
                             return (
                                 <div className="mt-3 space-y-4 pb-4">
@@ -358,6 +375,15 @@ const buildHelpItems = (paymentType: string) => [
 const InvoicePage = ({ ref_id }: { ref_id: string }) => {
     const hasFetched = useRef(false)
     const { getInvoice, invoice, loading, error } = useInvoiceStore()
+    const [realtimeConnected, setRealtimeConnected] = useState(false)
+
+    
+    const handleWSUpdate = useCallback(() => {
+        console.log("[InvoicePage] WS update received, re-fetching invoice...")
+        getInvoice(ref_id)
+    }, [ref_id, getInvoice])
+
+    const ws = useWebSocket(ref_id, handleWSUpdate)
 
     useEffect(() => {
         if (!hasFetched.current) {

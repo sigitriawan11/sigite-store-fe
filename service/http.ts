@@ -18,8 +18,17 @@ export interface ApiError {
 }
 
 export interface RefreshTokenResponse {
-  access_token: string;
-  refresh_token?: string;
+  status: boolean;
+  message: string;
+  data?: {
+    access_token: string;
+    refresh_token?: string;
+    user_id?: string;
+    email?: string;
+    role_id?: string;
+    role_name?: string;
+    [key: string]: unknown;
+  };
 }
 
 interface ExtendedAxiosRequestConfig extends InternalAxiosRequestConfig {
@@ -38,62 +47,6 @@ const TIMEOUT = 15_000;
 const MAX_RETRY = 3;
 const RETRY_DELAY = 1_000;
 const RETRY_STATUS_CODES: number[] = [408, 429, 500, 502, 503, 504];
-
-const ACCESS_TOKEN_COOKIE = "access_token";
-const REFRESH_TOKEN_COOKIE = "refresh_token";
-
-interface CookieOptions {
-  days?: number;
-  secure?: boolean;
-  sameSite?: "Strict" | "Lax" | "None";
-}
-
-export const CookieService = {
-  get(name: string): string | null {
-    const match = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith(`${name}=`));
-    return match ? decodeURIComponent(match.split("=")[1]) : null;
-  },
-
-  set(name: string, value: string, options: CookieOptions = {}): void {
-    const { days = 7, secure = true, sameSite = "Lax" } = options;
-    const expires = new Date(Date.now() + days * 864e5).toUTCString();
-    document.cookie = [
-      `${name}=${encodeURIComponent(value)}`,
-      `expires=${expires}`,
-      "path=/",
-      secure ? "Secure" : "",
-      `SameSite=${sameSite}`,
-    ]
-      .filter(Boolean)
-      .join("; ");
-  },
-
-  delete(name: string): void {
-    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-  },
-};
-
-export const TokenService = {
-  getAccessToken: (): string | null =>
-    CookieService.get(ACCESS_TOKEN_COOKIE),
-
-  getRefreshToken: (): string | null =>
-    CookieService.get(REFRESH_TOKEN_COOKIE),
-
-  setTokens(access: string, refresh?: string): void {
-    CookieService.set(ACCESS_TOKEN_COOKIE, access, { days: 1 });
-    if (refresh) {
-      CookieService.set(REFRESH_TOKEN_COOKIE, refresh, { days: 30 });
-    }
-  },
-
-  clearTokens(): void {
-    CookieService.delete(ACCESS_TOKEN_COOKIE);
-    CookieService.delete(REFRESH_TOKEN_COOKIE);
-  },
-};
 
 const http: AxiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -139,27 +92,24 @@ const processQueue = (error: unknown, token: string | null = null): void => {
 };
 
 const refreshAccessToken = async (): Promise<string> => {
-  const refreshToken = TokenService.getRefreshToken();
-
+  
   const response = await axios.post<RefreshTokenResponse>(
     `${BASE_URL}/auth/refresh`,
-    refreshToken ? { refresh_token: refreshToken } : {},
+    {},
     { withCredentials: true }
   );
 
-  const { access_token, refresh_token } = response.data;
-  TokenService.setTokens(access_token, refresh_token);
-  return access_token;
+  const { status, data } = response.data;
+  if (status && data?.access_token) {
+    return data.access_token;
+  }
+
+  throw new Error("Refresh failed: no access token returned");
 };
 
 http.interceptors.request.use(
   (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
     const ext = config as ExtendedAxiosRequestConfig;
-    const token = TokenService.getAccessToken();
-    if (token) {
-      ext.headers.Authorization = `Bearer ${token}`;
-    }
-
     ext.metadata = { startTime: Date.now() };
     return ext;
   },
@@ -187,7 +137,6 @@ http.interceptors.response.use(
         return new Promise<string>((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         }).then((token) => {
-          original.headers.Authorization = `Bearer ${token}`;
           return http(original);
         });
       }
@@ -198,11 +147,9 @@ http.interceptors.response.use(
       try {
         const newToken = await refreshAccessToken();
         processQueue(null, newToken);
-        original.headers.Authorization = `Bearer ${newToken}`;
         return http(original);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        TokenService.clearTokens();
         window.dispatchEvent(new Event("auth:logout"));
         return Promise.reject(refreshError);
       } finally {

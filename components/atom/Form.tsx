@@ -179,22 +179,22 @@ export const FormApp: FC<FormProps> = ({ config, form, onFinish }) => {
   );
 
   const FUNCTION_PROPS = [
-    // state UI
+    
     "disabled",
     "hidden",
     "readOnly",
 
-    // data driven
+    
     "options",
 
-    // display
+    
     "placeholder",
     "label",
 
-    // validation
+    
     "rules",
 
-    // style / layout (optional)
+    
     "style",
     "className",
   ];
@@ -268,11 +268,11 @@ export const FormApp: FC<FormProps> = ({ config, form, onFinish }) => {
             <Input
               {...rest}
               {...resolvedProps}
-              // Show numeric keyboard on mobile
+              
               inputMode="numeric"
-              // On mobile browsers, show telephone pad
+              
               type="tel"
-              // Prevent non-digit input on desktop
+              
               onKeyDown={(e) => {
                 const allowedKeys = [
                   "Backspace",
@@ -287,7 +287,7 @@ export const FormApp: FC<FormProps> = ({ config, form, onFinish }) => {
                   e.preventDefault();
                 }
               }}
-              // Strip non-digits on paste
+              
               onPaste={(e) => {
                 e.preventDefault();
                 const pasted = e.clipboardData.getData("text").replace(/\D/g, "");
@@ -299,7 +299,7 @@ export const FormApp: FC<FormProps> = ({ config, form, onFinish }) => {
                   current.slice(0, start) + pasted + current.slice(end);
                 form.setFieldValue(key, next);
               }}
-              // Remove spinner arrows (Chrome/Safari/Edge)
+              
               style={{ width: "100%", ...((rest as any).style ?? {}) }}
             />
           </AntdForm.Item>
@@ -400,7 +400,7 @@ export const FormApp: FC<FormProps> = ({ config, form, onFinish }) => {
                 const current: string = String(form.getFieldValue(key) ?? "");
                 const next = current.slice(0, start) + pasted + current.slice(end);
                 form.setFieldValue(key, next);
-                // trigger validation after paste
+                
                 setTimeout(() => form.validateFields([key]), 0);
               }}
             />

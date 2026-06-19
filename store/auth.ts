@@ -4,11 +4,26 @@ import type {
   RequestRegisterUser,
   RequestLoginUser,
 } from "@/types/auth.types";
-import type { UserSession } from "@/types/dashboard.types";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 const API = process.env.NEXT_PUBLIC_API_URL;
+
+
+export interface UserSession {
+  id?: string;
+  user_id?: string;
+  email?: string;
+  display_name?: string;
+  role_id?: string;
+  role_name?: string;
+  avatar?: string;
+  is_active?: boolean;
+  wallet_balance?: number;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
 
 interface AuthStore {
   user: UserSession | null;
@@ -23,10 +38,11 @@ interface AuthStore {
   error: string | null;
 
   login: (payload: RequestLoginUser) => Promise<boolean>;
-  register: (payload: RequestRegisterUser) => Promise<string | boolean>;
+  register: (payload: RequestRegisterUser) => Promise<boolean>;
   logout: () => Promise<void>;
   loginProvider: (provider?: string) => void;
   fetchSession: () => Promise<void>;
+  checkSession: () => Promise<boolean>;
   setUser: (user: UserSession) => void;
   hydrate: () => void;
 }
@@ -64,7 +80,7 @@ export const useAuthStore = create<AuthStore>()(
           }).then((r) => r.json());
 
           if (res.status === true) {
-            // Backend sudah set httpOnly cookies, fetch user data
+            
             const sessionRes = await fetch(`${API}/auth/session`, {
               credentials: "include",
               headers: { "Content-Type": "application/json" },
@@ -136,7 +152,7 @@ export const useAuthStore = create<AuthStore>()(
             headers: { "Content-Type": "application/json" },
           });
         } catch {
-          // ignore
+          
         } finally {
           set({
             user: null,
@@ -180,6 +196,77 @@ export const useAuthStore = create<AuthStore>()(
           set((state) => ({
             loading: { ...state.loading, session: false },
             isHydrated: true,
+          }));
+        }
+      },
+
+      
+
+
+
+
+
+
+      checkSession: async (): Promise<boolean> => {
+        set((state) => ({
+          loading: { ...state.loading, session: true },
+        }));
+
+        try {
+          
+          const sessionRes = await fetch(`${API}/auth/session`, {
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+          }).then((r) => r.json());
+
+          if (sessionRes.status === true && sessionRes.data) {
+            set({
+              user: sessionRes.data,
+              isAuthenticated: true,
+              error: null,
+              isHydrated: true,
+            });
+            return true;
+          }
+
+          
+          const refreshRes = await fetch(`${API}/auth/refresh`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+          }).then((r) => r.json());
+
+          if (refreshRes.status === true && refreshRes.data) {
+            
+            const { access_token, refresh_token, ...userData } = refreshRes.data;
+            set({
+              user: userData as UserSession,
+              isAuthenticated: true,
+              error: null,
+              isHydrated: true,
+            });
+            return true;
+          }
+
+          
+          set({
+            user: null,
+            isAuthenticated: false,
+            error: null,
+            isHydrated: true,
+          });
+          return false;
+        } catch {
+          set({
+            user: null,
+            isAuthenticated: false,
+            error: null,
+            isHydrated: true,
+          });
+          return false;
+        } finally {
+          set((state) => ({
+            loading: { ...state.loading, session: false },
           }));
         }
       },

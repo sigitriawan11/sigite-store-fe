@@ -1,14 +1,17 @@
-import HomeComp from "@/components/transactions/Home";
 import { Metadata } from "next";
+import BaseLayout from "@/components/layouts";
+import OrderTracker from "@/components/transactions/OrderTracker";
 
 export const metadata: Metadata = {
-    title: 'Sigite Store'
+    title: 'Track Order'
 }
 
-const HomePage = () => {
+const OrderPage = () => {
     return (
-        <HomeComp />
+        <BaseLayout>
+            <OrderTracker />
+        </BaseLayout>
     )
 }
 
-export default HomePage
+export default OrderPage

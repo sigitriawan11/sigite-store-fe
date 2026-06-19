@@ -8,7 +8,7 @@ export type CreateOrderRequest = {
 
 export type PaymentType = 'QR_CODE' | 'BANK_TRANSFER';
 export type TransactionStatus = 'PENDING' | 'PAID' | 'FAILED' | 'EXPIRED';
-export type ProviderStatus = 'Pending' | 'Process' | 'Success';
+export type ProviderStatus = 'Pending' | 'Process' | 'Success' | null;
 
 export type OrderResult = {
   ref_id: string;
@@ -50,4 +50,5 @@ export type InvoiceResult = {
   account_data: Record<string, unknown>;
   product: InvoiceProduct;
   channel: InvoiceChannel;
+  paid_at: string | null;
 };

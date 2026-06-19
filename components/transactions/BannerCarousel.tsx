@@ -41,7 +41,7 @@ const BannerCarousel = () => {
                 ))}
             </Carousel>
 
-            {/* Nav arrows */}
+             
             <button
                 onClick={() => ref.current?.prev()}
                 className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full flex items-center justify-center text-white"

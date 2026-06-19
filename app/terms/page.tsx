@@ -10,7 +10,7 @@ export default function TermsPage() {
           Last Updated: 31 March 2026
         </p>
 
-        {/* SECTION */}
+         
         <section className="space-y-6 text-gray-700 leading-relaxed">
           <div>
             <h2 className="font-semibold text-lg mb-2">
