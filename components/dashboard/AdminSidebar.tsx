@@ -20,6 +20,9 @@ import {
   BiUserCircle,
   BiCog,
   BiClipboard,
+  BiCreditCard,
+  BiMoneyWithdraw,
+  BiCheckShield,
   BiMenuAltLeft,
   BiChevronDown,
   BiChevronRight,
@@ -42,27 +45,47 @@ const iconMap: Record<string, React.ReactNode> = {
   BiUserCircle: <BiUserCircle size={20} />,
   BiCog: <BiCog size={20} />,
   BiClipboard: <BiClipboard size={20} />,
+  BiCreditCard: <BiCreditCard size={20} />,
+  BiMoneyWithdraw: <BiMoneyWithdraw size={20} />,
+  BiCheckShield: <BiCheckShield size={20} />,
 };
 
 const AdminSidebar = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { menus, sidebarCollapsed, toggleSidebar } = useMenuStore();
+  const { menus, sidebarCollapsed, toggleSidebar, mobileOpen, closeMobile } = useMenuStore();
   const { user, logout } = useAuthStore();
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
   const [mounted, setMounted] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // Close the mobile drawer whenever the route changes.
+  useEffect(() => {
+    closeMobile();
+  }, [pathname, closeMobile]);
+
   useEffect(() => {
     const activeMenu = menus.find((m) => pathname.startsWith(m.path));
     if (activeMenu?.parent_id) {
       setExpandedMenus((prev) => new Set(prev).add(activeMenu.parent_id!));
     }
   }, [pathname, menus]);
+
+  // Collapsed (icon-only) mode only applies on desktop; the mobile drawer
+  // always shows full labels.
+  const collapsed = isDesktop && sidebarCollapsed;
 
   const toggleExpand = (id: string) => {
     setExpandedMenus((prev) => {
@@ -104,19 +127,20 @@ const AdminSidebar = () => {
           active
             ? "bg-(--color-1)/20 text-(--color-1) font-semibold"
             : "text-gray-400 hover:text-white hover:bg-white/5"
-        } ${sidebarCollapsed ? "justify-center" : ""}`}
+        } ${collapsed ? "justify-center" : ""}`}
         onClick={() => {
           if (hasChildren) {
             toggleExpand(item.id);
           } else {
             router.push(item.path);
+            closeMobile();
           }
         }}
       >
         <span className="flex-shrink-0">
           {iconMap[item.icon] || <BiHome size={20} />}
         </span>
-        {!sidebarCollapsed && (
+        {!collapsed && (
           <>
             <span className="flex-1 text-sm truncate">{item.name}</span>
             {hasChildren && (
@@ -133,7 +157,7 @@ const AdminSidebar = () => {
       </div>
     );
 
-    if (hasChildren && !sidebarCollapsed) {
+    if (hasChildren && !collapsed) {
       return (
         <div key={item.id}>
           {menuContent}
@@ -161,17 +185,17 @@ const AdminSidebar = () => {
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-full z-40 flex flex-col bg-[#0a0e1a] border-r border-white/10 transition-all duration-300 ${
-        sidebarCollapsed ? "w-[70px]" : "w-[260px]"
-      }`}
+      className={`fixed left-0 top-0 h-full z-40 flex flex-col bg-[#0a0e1a] border-r border-white/10 transition-transform duration-300 w-[260px] ${
+        collapsed ? "lg:w-[70px]" : "lg:w-[260px]"
+      } ${mobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
     >
-       
+
       <div
         className={`flex items-center h-16 border-b border-white/10 px-4 ${
-          sidebarCollapsed ? "justify-center" : "justify-between"
+          collapsed ? "justify-center" : "justify-between"
         }`}
       >
-        {!sidebarCollapsed && (
+        {!collapsed && (
           <Link href="/admin/dashboard" className="flex items-center gap-2">
             <div className="relative w-8 h-8">
               <Image
@@ -187,21 +211,19 @@ const AdminSidebar = () => {
           </Link>
         )}
         <button
-          onClick={toggleSidebar}
+          onClick={() => (isDesktop ? toggleSidebar() : closeMobile())}
           className="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-white/5"
         >
           <BiMenuAltLeft size={20} />
         </button>
       </div>
 
-       
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
         {menus.map((menu) => renderMenuItem(menu))}
       </nav>
 
-       
       <div className="border-t border-white/10 p-3">
-        {!sidebarCollapsed && user && (
+        {!collapsed && user && (
           <div className="flex items-center gap-3 mb-3 px-2">
             <div className="w-8 h-8 rounded-full bg-(--color-1)/20 flex items-center justify-center text-(--color-1) font-bold text-sm">
               {(user.display_name || user.email || "U").charAt(0).toUpperCase()}
@@ -219,11 +241,11 @@ const AdminSidebar = () => {
         <button
           onClick={handleLogout}
           className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 ${
-            sidebarCollapsed ? "justify-center" : ""
+            collapsed ? "justify-center" : ""
           }`}
         >
           <BiLogOut size={20} />
-          {!sidebarCollapsed && <span className="text-sm">Logout</span>}
+          {!collapsed && <span className="text-sm">Logout</span>}
         </button>
       </div>
     </aside>

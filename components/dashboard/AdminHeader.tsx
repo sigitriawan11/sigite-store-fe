@@ -2,6 +2,7 @@
 
 import { useAuthStore } from "@/store/auth";
 import { useMenuStore } from "@/store/menu";
+import { get as getHttp } from "@/service/http";
 import { Logo } from "@/assets";
 import Image from "next/image";
 import Link from "next/link";
@@ -21,8 +22,8 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const AdminHeader = () => {
   const router = useRouter();
-  const { user, logout } = useAuthStore();
-  const { sidebarCollapsed, toggleSidebar } = useMenuStore();
+  const { user, logout, setWalletBalance } = useAuthStore();
+  const { toggleMobile } = useMenuStore();
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -33,7 +34,18 @@ const AdminHeader = () => {
     setMounted(true);
   }, []);
 
-  
+  useEffect(() => {
+    if (!user?.user_id || user?.role_name === "Super Admin") return;
+    getHttp<any>("/account/wallet", { page: 1, pageSize: 1 })
+      .then((r) => {
+        if (typeof r?.data?.balance === "number") {
+          setWalletBalance(r.data.balance);
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.user_id]);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
@@ -52,7 +64,7 @@ const AdminHeader = () => {
     router.push("/auth/login");
   };
 
-  const isSuperAdmin = user?.role_name === "SUPER_ADMIN";
+  const isSuperAdmin = user?.role_name === "Super Admin";
 
   if (!mounted) return null;
 
@@ -63,13 +75,12 @@ const AdminHeader = () => {
         <div className="flex items-center gap-3">
            
           <button
-            onClick={toggleSidebar}
+            onClick={toggleMobile}
             className="text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-white/5 lg:hidden"
           >
             <BiMenuAltLeft size={22} />
           </button>
 
-           
           <Link
             href="/admin/dashboard"
             className="flex items-center gap-2 lg:hidden"
@@ -84,7 +95,6 @@ const AdminHeader = () => {
 
         </div>
 
-         
         <div className="flex items-center gap-2">
            
           {!isSuperAdmin && (
@@ -96,7 +106,6 @@ const AdminHeader = () => {
             </div>
           )}
 
-           
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setNotifOpen(!notifOpen)}
@@ -127,7 +136,6 @@ const AdminHeader = () => {
             </AnimatePresence>
           </div>
 
-           
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setProfileOpen(!profileOpen)}

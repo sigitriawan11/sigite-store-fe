@@ -9,7 +9,6 @@ import { persist } from "zustand/middleware";
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
-
 export interface UserSession {
   id?: string;
   user_id?: string;
@@ -44,6 +43,7 @@ interface AuthStore {
   fetchSession: () => Promise<void>;
   checkSession: () => Promise<boolean>;
   setUser: (user: UserSession) => void;
+  setWalletBalance: (balance: number) => void;
   hydrate: () => void;
 }
 
@@ -200,13 +200,6 @@ export const useAuthStore = create<AuthStore>()(
         }
       },
 
-      
-
-
-
-
-
-
       checkSession: async (): Promise<boolean> => {
         set((state) => ({
           loading: { ...state.loading, session: true },
@@ -229,7 +222,6 @@ export const useAuthStore = create<AuthStore>()(
             return true;
           }
 
-          
           const refreshRes = await fetch(`${API}/auth/refresh`, {
             method: "POST",
             credentials: "include",
@@ -248,7 +240,6 @@ export const useAuthStore = create<AuthStore>()(
             return true;
           }
 
-          
           set({
             user: null,
             isAuthenticated: false,
@@ -277,6 +268,12 @@ export const useAuthStore = create<AuthStore>()(
 
       setUser: (user: UserSession) => {
         set({ user, isAuthenticated: true });
+      },
+
+      setWalletBalance: (balance: number) => {
+        set((state) => ({
+          user: state.user ? { ...state.user, wallet_balance: balance } : state.user,
+        }));
       },
     }),
     {

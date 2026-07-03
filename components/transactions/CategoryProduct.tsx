@@ -18,7 +18,6 @@ import { Helper } from "@/utils/Helper"
 import { useNotification } from "../provider/NotificationProvider"
 import ConfirmOrder from "./ConfirmOrder"
 
-
 const CategoryProduct = ({ slug }: { slug: string }) => {
     const hasFetched = useRef(false)
     const [form] = Form.useForm()
@@ -35,7 +34,7 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
     const { getProductCategoryBySlug, product_detail, current_step, select_product, setSelectedProduct, setCurrentStep } = useProductStore()
     const { getChannels, channels, select_channel, setSelectedChannel } = useChannelStore()
     const notif = useNotification()
-    const { createOrder, loading: paymentLoading } = usePaymentStore()
+    const { createOrder, payWithBalance, loading: paymentLoading } = usePaymentStore()
     const router = useRouter()
 
     const init = async () => {
@@ -49,15 +48,27 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
     const handleConfirmOrder = async () => {
         if (!pendingOrderPayload) return
         try {
-            const result = await createOrder({
-                product_code: select_product!.code,
-                channel_code: select_channel!.code,
-                phone: pendingOrderPayload.phone,
-                email: pendingOrderPayload.email_recipient,
-                account_data: pendingOrderPayload.accountData,
-            })
+            let refId: string
+            if (select_channel!.code === "SALDO") {
+                const result = await payWithBalance({
+                    product_code: select_product!.code,
+                    phone: pendingOrderPayload.phone,
+                    email: pendingOrderPayload.email_recipient,
+                    account_data: pendingOrderPayload.accountData,
+                })
+                refId = result.ref_id
+            } else {
+                const result = await createOrder({
+                    product_code: select_product!.code,
+                    channel_code: select_channel!.code,
+                    phone: pendingOrderPayload.phone,
+                    email: pendingOrderPayload.email_recipient,
+                    account_data: pendingOrderPayload.accountData,
+                })
+                refId = result.ref_id
+            }
             setConfirmModalVisible(false)
-            router.push(`/invoice/${result.ref_id}`)
+            router.push(`/invoice/${refId}`)
         } catch (err: any) {
             if (err?.message) {
                 notif.error({
@@ -156,10 +167,18 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
         if (!product_detail) return
 
         set_config_products([
-            product_detail.product_items.map((item) => ({
-                col: 6,
-                other: <CardProduct item={item} />
-            }))
+            [
+                {
+                    col: 24,
+                    other: (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                            {product_detail.product_items.map((item) => (
+                                <CardProduct key={item.code} item={item} />
+                            ))}
+                        </div>
+                    )
+                }
+            ]
         ])
 
         set_config_user_data(product_detail.product.account_config)
@@ -177,7 +196,7 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
                             <MdPayments className="inline" /> {item.name}
                         </h3>
                         <div className="space-y-2">
-                            <div className="grid grid-cols-4 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 {item.channels.map((channel) => (
                                     <CardPaymentMethod
                                         key={channel.code}
@@ -204,25 +223,28 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
 
     return (
         <>
-            <Row gutter={[24, 0]} className={`w-full! ${current_step === 2 && select_channel ? 'pb-36' : ''}`}>
-                <Col span={5}>
-                    <div className="sticky top-44">
+            <Row gutter={[24, 16]} className={`w-full! ${current_step === 2 && select_channel ? 'pb-36' : ''}`}>
+                <Col xs={24} lg={5}>
+                    <div className="lg:sticky lg:top-44">
                         {product_detail ? (
-                            <div className="rounded-2xl shadow bg-(--color-4)">
-                                <Image
-                                    src={product_detail!.product.image}
-                                    alt={product_detail!.product.display_name}
-                                    width={250}
-                                    height={200}
-                                    priority
-                                />
+                            <div className="rounded-2xl shadow bg-(--color-4) overflow-hidden">
+                                <div className="relative w-full aspect-square">
+                                    <Image
+                                        src={product_detail!.product.image}
+                                        alt={product_detail!.product.display_name}
+                                        fill
+                                        sizes="(max-width: 1024px) 100vw, 20vw"
+                                        className="object-contain p-4"
+                                        priority
+                                    />
+                                </div>
                             </div>
                         ) : (
                             <SkeletonLoad />
                         )}
                     </div>
                 </Col>
-                <Col span={19}>
+                <Col xs={24} lg={19}>
                     <div>
                         <BoxDefault>
                             <h3 className="font-semibold text-2xl">{product_detail?.product.display_name}</h3>
@@ -300,8 +322,8 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
             </Row>
 
             {current_step === 2 && (
-                <div className="fixed bottom-0 left-0 max-w-7xl mx-auto right-0 z-50 bg-(--color-3) border-[1.5px] border-dotted border-gray-700 px-10 py-4 shadow-2xl">
-                    <div className="flex items-center justify-between">
+                <div className="fixed bottom-0 left-0 right-0 z-50 bg-(--color-3) border-[1.5px] border-dotted border-gray-700 px-4 sm:px-10 py-3 sm:py-4 shadow-2xl">
+                    <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="flex flex-col gap-y-1">
                             <div className="flex items-center gap-x-2">
                                 <BiShoppingBag className="text-blue-400 text-xl" />
@@ -317,10 +339,10 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
                             </div>
                         </div>
 
-                        <div className="space-x-3">
+                        <div className="grid grid-cols-2 gap-3 w-full sm:w-auto sm:min-w-[22rem]">
                             <Button
                                 size="large"
-                                className="bg-white! hover:bg-gray-300! text-black! rounded-full! w-44! font-semibold! shadow-xl! border-2! border-[#4B59C4]! transition! duration-300!"
+                                className="bg-white! hover:bg-gray-300! text-black! rounded-full! w-full! font-semibold! shadow-xl! border-2! border-[#4B59C4]! transition! duration-300!"
                                 onClick={() => {
                                     setCurrentStep(1)
                                 }}
@@ -330,7 +352,7 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
                             <Button
                                 disabled={!select_channel}
                                 size="large"
-                                className="bg-[#5E6AD2]! disabled:bg-gray-400! text-white! rounded-full! w-44! font-semibold! shadow-xl! border-0! hover:bg-[#4B59C4]! transition! duration-300!"
+                                className="bg-[#5E6AD2]! disabled:bg-gray-400! text-white! rounded-full! w-full! font-semibold! shadow-xl! border-0! hover:bg-[#4B59C4]! transition! duration-300!"
                                 onClick={async () => {
                                     await form.validateFields()
                                     if (current_step == 2) {
@@ -345,7 +367,6 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
                                         }
 
                                         const accountData: Record<string, string> = form.getFieldsValue()
-                                        console.log('Account Data:', accountData)
                                         setPendingOrderPayload({ phone, email_recipient, accountData })
                                         setConfirmModalVisible(true)
                                     }

@@ -22,6 +22,9 @@ interface MenuStore {
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
+  mobileOpen: boolean;
+  toggleMobile: () => void;
+  closeMobile: () => void;
   fetchMenus: () => Promise<void>;
 }
 
@@ -31,6 +34,7 @@ export const useMenuStore = create<MenuStore>()(
     loading: false,
     error: null,
     sidebarCollapsed: false,
+    mobileOpen: false,
 
     toggleSidebar: () => {
       set((state) => {
@@ -41,6 +45,18 @@ export const useMenuStore = create<MenuStore>()(
     setSidebarCollapsed: (collapsed: boolean) => {
       set((state) => {
         state.sidebarCollapsed = collapsed;
+      });
+    },
+
+    toggleMobile: () => {
+      set((state) => {
+        state.mobileOpen = !state.mobileOpen;
+      });
+    },
+
+    closeMobile: () => {
+      set((state) => {
+        state.mobileOpen = false;
       });
     },
 

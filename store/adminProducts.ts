@@ -124,16 +124,16 @@ export const useAdminProductsStore = create<AdminProductsStore>()(
       });
 
       try {
-        const res: any = await getHttp("/products", {
+        const res: any = await getHttp("/admin/categories", {
           page: 1,
-          pageSize: 100,
+          pageSize: 999,
         });
 
         if (res?.status === true && res?.data?.data) {
           set((state) => {
             state.categories = res.data.data.map((cat: any) => ({
               id: cat.id,
-              name: cat.name,
+              name: cat.display_name || cat.name,
             }));
           });
         }

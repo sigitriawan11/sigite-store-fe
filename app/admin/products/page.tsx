@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useCallback, useMemo } from "react";
+import { useEffect, useCallback, useMemo, ReactNode } from "react";
 import { useAdminProductsStore } from "@/store/adminProducts";
 import DynamicTable from "@/components/dashboard/DynamicTable";
 import { BiSearch, BiReset, BiCategory } from "react-icons/bi";
+import { Badge } from "antd";
 
 export default function AdminProductsPage() {
   const {
@@ -26,27 +27,52 @@ export default function AdminProductsPage() {
     resetFilters,
   } = useAdminProductsStore();
 
-  
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
 
-  
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts, page, pageSize]);
 
-  
+  const enrichedData = useMemo(() => {
+    return products.map((product) => {
+      const rawJson = product.raw_json as Record<string, unknown> | null | undefined;
+      const statusSeller = rawJson?.buyer_product_status === true ? "Active" : "Inactive";
+      return {
+        ...product,
+        "Status Seller": statusSeller,
+      };
+    });
+  }, [products]);
+
   const columns = useMemo(() => {
     if (products.length === 0) return [];
     
-    const keys = Object.keys(products[0]);
+    const keys = Object.keys(enrichedData[0]);
     
-    const priorityOrder = ["Code", "Name", "Category", "Price", "Status"];
-    const prioritized = priorityOrder.filter((k) => keys.includes(k));
-    const remaining = keys.filter((k) => !priorityOrder.includes(k));
+    const filteredKeys = keys.filter((k) => k !== "raw_json");
+    
+    const priorityOrder = ["Code", "Name", "Category", "Price", "Status", "Status Seller"];
+    const prioritized = priorityOrder.filter((k) => filteredKeys.includes(k));
+    const remaining = filteredKeys.filter((k) => !priorityOrder.includes(k));
     return [...prioritized, ...remaining];
-  }, [products]);
+  }, [enrichedData]);
+
+  const getBadgeColor = (status: string): "success" | "error" => {
+    return status === "Active" ? "success" : "error";
+  };
+
+  const columnRenderers: Record<string, (value: unknown, row: Record<string, unknown>) => ReactNode> = useMemo(() => ({
+    "Status": (value) => {
+      const status = String(value ?? "Inactive");
+      return <Badge status={getBadgeColor(status)} text={status} />;
+    },
+    "Status Seller": (value) => {
+      const status = String(value ?? "Inactive");
+      return <Badge status={getBadgeColor(status)} text={status} />;
+    },
+  }), []);
 
   const handleSearch = useCallback(() => {
     setPage(1);
@@ -55,8 +81,10 @@ export default function AdminProductsPage() {
 
   const handleReset = useCallback(() => {
     resetFilters();
-    
-  }, [resetFilters]);
+    setTimeout(() => {
+      fetchProducts();
+    }, 0);
+  }, [resetFilters, fetchProducts]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -77,14 +105,12 @@ export default function AdminProductsPage() {
         </p>
       </div>
 
-       
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-sm text-red-400">
           {error}
         </div>
       )}
 
-       
       <div className="bg-[#0e1324]/80 border border-white/10 rounded-xl p-4 lg:p-5">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
            
@@ -101,16 +127,15 @@ export default function AdminProductsPage() {
               disabled={loadingCategories}
               className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-(--color-1)/50 transition-colors cursor-pointer disabled:opacity-50"
             >
-              <option value="">All Categories</option>
+              <option value="" className="bg-[#0e1324] text-gray-300">All Categories</option>
               {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
+                <option key={cat.id} value={cat.id} className="bg-[#0e1324] text-gray-300">
                   {cat.name}
                 </option>
               ))}
             </select>
           </div>
 
-           
           <div className="w-full sm:w-72">
             <label className="block text-xs font-medium text-gray-500 mb-1.5">
               <BiSearch className="inline mr-1 -mt-0.5" size={14} />
@@ -126,7 +151,6 @@ export default function AdminProductsPage() {
             />
           </div>
 
-           
           <div className="flex gap-2 w-full sm:w-auto">
             <button
               onClick={handleSearch}
@@ -148,15 +172,15 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-       
       <DynamicTable
         columns={columns}
-        data={products}
+        data={enrichedData}
         loading={loading}
         paginate={paginate}
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
         emptyMessage="No products found matching your filters"
+        columnRenderers={columnRenderers}
       />
     </div>
   );

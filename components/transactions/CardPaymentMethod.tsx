@@ -1,8 +1,9 @@
-import { ChannelItem, useChannelStore } from "@/store/channel";
+import { ChannelItem, useChannelStore, SALDO_CHANNEL_CODE } from "@/store/channel";
 import { useProductStore } from "@/store/product";
 import { Helper } from "@/utils/Helper";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { BiWallet } from "react-icons/bi";
 
 type PaymentChannelItem = ChannelItem
 
@@ -13,11 +14,14 @@ type Props = {
 
 const CardPaymentMethod = ({ item, onClick }: Props) => {
     const { select_product } = useProductStore()
-    const { setSelectedChannel, select_channel } = useChannelStore()
+    const { setSelectedChannel, select_channel, saldoBalance } = useChannelStore()
     const isActive = item.is_active
     const [price, setPrice] = useState(0)
 
-    useEffect(() => { 
+    const isSaldo = item.code === SALDO_CHANNEL_CODE
+    const balance = Number(saldoBalance ?? 0)
+
+    useEffect(() => {
         if (select_product) {
             const calculatedPrice = item.type_fee === '%'
                 ? select_product.price + (item.fee * select_product.price)
@@ -26,10 +30,14 @@ const CardPaymentMethod = ({ item, onClick }: Props) => {
         }
     }, [select_product])
 
+    const notEnoughBalance = isSaldo && select_product != null && balance < price
+    const belowMin = !isSaldo && price < item.min
+    const blocked = !isActive || notEnoughBalance || belowMin
+
     return (
         <div
             onClick={() => {
-                if (isActive && price >= item.min && onClick) {
+                if (!blocked && onClick) {
                     setSelectedChannel(item)
                     return onClick(item)
                 }
@@ -39,7 +47,7 @@ const CardPaymentMethod = ({ item, onClick }: Props) => {
                 relative flex items-center justify-between
                 rounded-xl border px-4 py-3 mb-3
                 transition-all duration-300
-                ${isActive
+                ${!blocked
                     ? "cursor-pointer bg-(--color-4) hover:scale-[1.01] hover:border-gray-200"
                     : "cursor-not-allowed bg-(--color-4) opacity-70 grayscale"}
                 ${select_channel?.code === item.code ? "border-blue-500 border-2 hover:border-blue-700!" : ""}
@@ -51,21 +59,19 @@ const CardPaymentMethod = ({ item, onClick }: Props) => {
                 </div>
             )}
 
-            {!isActive && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-black/40">
-                    <span className="text-white text-xs font-semibold">
-                        Unavailable
-                    </span>
+            {notEnoughBalance && (
+                <div className="absolute top-2 right-2 z-20 bg-red-500 text-white text-[10px] px-2 py-1 rounded-full font-semibold">
+                    Insufficient balance
                 </div>
             )}
-            
-            {price < item.min && (
+
+            {belowMin && (
                 <div className="absolute top-2 right-2 z-20 bg-red-500 text-white text-[10px] px-2 py-1 rounded-full font-semibold">
                     Min price {Helper.formatRupiah(item.min)}
                 </div>
             )}
 
-            {price < item.min && (
+            {blocked && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-black/40">
                     <span className="text-white text-xs font-semibold">
                         Unavailable
@@ -81,16 +87,26 @@ const CardPaymentMethod = ({ item, onClick }: Props) => {
                 <span className="text-xs text-gray-500">
                     {select_product ? Helper.formatRupiah(price) : 'Rp 0'}
                 </span>
+
+                {isSaldo && (
+                    <span className="text-[11px] text-emerald-400 mt-0.5">
+                        Balance: {Helper.formatRupiah(balance)}
+                    </span>
+                )}
             </div>
 
             <div className="z-0">
-                <Image
-                    src={item.image}
-                    alt={item.name}
-                    width={50}
-                    height={30}
-                    className="object-contain"
-                />
+                {isSaldo || !item.image ? (
+                    <BiWallet className="text-(--color-1)" size={34} />
+                ) : (
+                    <Image
+                        src={item.image}
+                        alt={item.name}
+                        width={50}
+                        height={30}
+                        className="object-contain"
+                    />
+                )}
             </div>
         </div>
     )

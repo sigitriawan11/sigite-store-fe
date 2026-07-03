@@ -13,7 +13,7 @@ interface AdminLayoutProps {
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   const { isAuthenticated, isHydrated, user, checkSession } = useAuthStore();
-  const { menus, sidebarCollapsed, fetchMenus } = useMenuStore();
+  const { menus, sidebarCollapsed, mobileOpen, closeMobile, fetchMenus } = useMenuStore();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -79,9 +79,17 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   return (
     <div className="min-h-screen bg-[#000514]">
       <AdminSidebar />
+
+      {mobileOpen && (
+        <div
+          onClick={closeMobile}
+          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
+        />
+      )}
+
       <div
-        className={`transition-all duration-300 ${
-          sidebarCollapsed ? "ml-[70px]" : "ml-[260px]"
+        className={`transition-all duration-300 ml-0 ${
+          sidebarCollapsed ? "lg:ml-[70px]" : "lg:ml-[260px]"
         }`}
       >
         <AdminHeader />

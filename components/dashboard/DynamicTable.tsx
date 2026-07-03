@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, ReactNode } from "react";
 import { motion } from "framer-motion";
 
 interface Paginate {
@@ -8,6 +8,8 @@ interface Paginate {
   pageSize: number;
   total: number;
 }
+
+export type ColumnRenderer = (value: unknown, row: Record<string, unknown>) => ReactNode;
 
 interface DynamicTableProps {
   columns: string[];
@@ -18,6 +20,7 @@ interface DynamicTableProps {
   onPageSizeChange?: (pageSize: number) => void;
   pageSizeOptions?: number[];
   emptyMessage?: string;
+  columnRenderers?: Record<string, ColumnRenderer>;
 }
 
 const DynamicTable = ({
@@ -29,6 +32,7 @@ const DynamicTable = ({
   onPageSizeChange,
   pageSizeOptions = [10, 25, 50, 100],
   emptyMessage = "No data available",
+  columnRenderers = {},
 }: DynamicTableProps) => {
   const totalPages = paginate ? Math.ceil(paginate.total / paginate.pageSize) : 0;
 
@@ -62,10 +66,14 @@ const DynamicTable = ({
     return String(value);
   };
 
+  const isImageColumn = (col: string, value: unknown): boolean => {
+    return col.toLowerCase() === "image" && typeof value === "string" && value.length > 0;
+  };
+
   return (
     <div className="w-full">
        
-      <div className="overflow-x-auto rounded-xl border border-white/10 bg-[#0e1324]/80">
+      <div className="overflow-x-auto rounded-xl border border-white/10 bg-[#0e1324]/80 hide-scrollbar">
         <table className="w-full min-w-[600px]">
           <thead>
             <tr className="border-b border-white/10 bg-white/5">
@@ -139,14 +147,46 @@ const DynamicTable = ({
                     <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                       {startIndex + rowIndex}
                     </td>
-                    {columns.map((col) => (
-                      <td
-                        key={col}
-                        className="px-4 py-3 text-sm text-gray-300 whitespace-nowrap"
-                      >
-                        {formatCellValue(row[col])}
-                      </td>
-                    ))}
+                    {columns.map((col) => {
+                      const value = row[col];
+                      
+                      if (columnRenderers[col]) {
+                        return (
+                          <td
+                            key={col}
+                            className="px-4 py-3 text-sm text-gray-300 whitespace-nowrap"
+                          >
+                            {columnRenderers[col](value, row)}
+                          </td>
+                        );
+                      }
+                      
+                      if (isImageColumn(col, value)) {
+                        return (
+                          <td
+                            key={col}
+                            className="px-4 py-3 text-sm text-gray-300 whitespace-nowrap"
+                          >
+                            <img
+                              src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/v1', '')}${value}`}
+                              alt={col}
+                              className="h-10 w-10 object-contain rounded-md bg-white/10 p-1"
+                              onError={(e) => {
+                                
+                              }}
+                            />
+                          </td>
+                        );
+                      }
+                      return (
+                        <td
+                          key={col}
+                          className="px-4 py-3 text-sm text-gray-300 whitespace-nowrap"
+                        >
+                          {formatCellValue(value)}
+                        </td>
+                      );
+                    })}
                   </motion.tr>
                 );
               })
@@ -155,7 +195,6 @@ const DynamicTable = ({
         </table>
       </div>
 
-       
       {paginate && totalPages > 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
            
@@ -176,7 +215,6 @@ const DynamicTable = ({
             entries
           </div>
 
-           
           <div className="flex items-center gap-3">
              
             <div className="flex items-center gap-2">
@@ -189,14 +227,13 @@ const DynamicTable = ({
                 className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-gray-300 focus:outline-none focus:border-(--color-1)/50 transition-colors cursor-pointer"
               >
                 {pageSizeOptions.map((size) => (
-                  <option key={size} value={size}>
+                  <option key={size} value={size} className="bg-[#0e1324] text-gray-300">
                     {size}
                   </option>
                 ))}
               </select>
             </div>
 
-             
             <div className="flex items-center gap-1">
               <button
                 onClick={() => onPageChange?.(1)}

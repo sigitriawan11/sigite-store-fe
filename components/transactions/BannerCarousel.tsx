@@ -28,12 +28,13 @@ const BannerCarousel = () => {
             >
                 {banners?.map((item: any) => (
                     <div key={item.id}>
-                        <div className="relative w-full aspect-16/5">
+                        <div className="relative w-full aspect-[16/5] bg-(--color-4)">
                             <Image
                                 src={item.image}
                                 alt="banner"
                                 fill
-                                className="object-cover"
+                                sizes="100vw"
+                                className="object-contain"
                                 priority
                             />
                         </div>

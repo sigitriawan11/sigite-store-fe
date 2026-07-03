@@ -593,7 +593,7 @@ export const FormApp: FC<FormProps> = ({ config, form, onFinish }) => {
       {config.map((row, rowIndex) => (
         <Row gutter={[24, 0]} key={rowIndex} className="w-full!">
           {row.map((field, colIndex) => (
-            <Col span={field.col} key={`${rowIndex}-${colIndex}`} className="w-full!">
+            <Col xs={24} md={field.col} key={`${rowIndex}-${colIndex}`} className="w-full!">
               {renderField(field, `${rowIndex}-${colIndex}`)}
             </Col>
           ))}

@@ -13,7 +13,7 @@ const BaseLayout = ({
             <HeaderComp />
 
             <div className="flex-1 bg-(--color-3)">
-                <div className="max-w-7xl mx-auto p-7">
+                <div className="max-w-7xl mx-auto px-4 py-5 sm:px-6 lg:p-7">
                     {children}
                 </div>
             </div>

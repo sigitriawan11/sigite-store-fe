@@ -3,6 +3,7 @@ import "./globals.css";
 import { ConfigProvider, theme } from "antd";
 import { NotificationProvider } from "@/components/provider/NotificationProvider";
 import ClientOnly from "@/components/layouts/ClientOnly";
+import PublicSettingsProvider from "@/components/provider/PublicSettingsProvider";
 import { Orbitron, Poppins } from 'next/font/google'
 import Script from "next/script";
 
@@ -60,7 +61,9 @@ export default function RootLayout({
           }}>
           <NotificationProvider>
             <ClientOnly>
-              {children}
+              <PublicSettingsProvider>
+                {children}
+              </PublicSettingsProvider>
             </ClientOnly>
           </NotificationProvider>
         </ConfigProvider>
