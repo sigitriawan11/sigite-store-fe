@@ -227,17 +227,15 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
                 <Col xs={24} lg={5}>
                     <div className="lg:sticky lg:top-44">
                         {product_detail ? (
-                            <div className="rounded-2xl shadow bg-(--color-4) overflow-hidden">
-                                <div className="relative w-full aspect-square">
-                                    <Image
-                                        src={product_detail!.product.image}
-                                        alt={product_detail!.product.display_name}
-                                        fill
-                                        sizes="(max-width: 1024px) 100vw, 20vw"
-                                        className="object-contain p-4"
-                                        priority
-                                    />
-                                </div>
+                            <div className="rounded-2xl shadow bg-(--color-4)">
+                                <Image
+                                    src={product_detail!.product.image}
+                                    alt={product_detail!.product.display_name}
+                                    width={250}
+                                    height={200}
+                                    className="w-full h-auto lg:w-[250px]"
+                                    priority
+                                />
                             </div>
                         ) : (
                             <SkeletonLoad />
@@ -323,7 +321,7 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
 
             {current_step === 2 && (
                 <div className="fixed bottom-0 left-0 right-0 z-50 bg-(--color-3) border-[1.5px] border-dotted border-gray-700 px-4 sm:px-10 py-3 sm:py-4 shadow-2xl">
-                    <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                         <div className="flex flex-col gap-y-1">
                             <div className="flex items-center gap-x-2">
                                 <BiShoppingBag className="text-blue-400 text-xl" />
@@ -339,10 +337,10 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 w-full sm:w-auto sm:min-w-[22rem]">
+                        <div className="grid grid-cols-2 gap-3 w-full lg:flex lg:w-auto">
                             <Button
                                 size="large"
-                                className="bg-white! hover:bg-gray-300! text-black! rounded-full! w-full! font-semibold! shadow-xl! border-2! border-[#4B59C4]! transition! duration-300!"
+                                className="bg-white! hover:bg-gray-300! text-black! rounded-full! w-full! lg:w-44! font-semibold! shadow-xl! border-2! border-[#4B59C4]! transition! duration-300!"
                                 onClick={() => {
                                     setCurrentStep(1)
                                 }}
@@ -352,7 +350,7 @@ const CategoryProduct = ({ slug }: { slug: string }) => {
                             <Button
                                 disabled={!select_channel}
                                 size="large"
-                                className="bg-[#5E6AD2]! disabled:bg-gray-400! text-white! rounded-full! w-full! font-semibold! shadow-xl! border-0! hover:bg-[#4B59C4]! transition! duration-300!"
+                                className="bg-[#5E6AD2]! disabled:bg-gray-400! text-white! rounded-full! w-full! lg:w-44! font-semibold! shadow-xl! border-0! hover:bg-[#4B59C4]! transition! duration-300!"
                                 onClick={async () => {
                                     await form.validateFields()
                                     if (current_step == 2) {

@@ -34,14 +34,14 @@ const HomeComp = () => {
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                             {products.map((item) => (
                                 <Link href={`/category/${item.slug}`} key={item.slug}>
-                                    <div className="group relative w-full aspect-[3/4] rounded-xl overflow-hidden bg-(--color-4) transition-transform duration-300 hover:-translate-y-2">
+                                    <div className="group relative w-full aspect-[3/4] lg:aspect-auto lg:h-64 rounded-xl overflow-hidden transition-transform duration-300 hover:-translate-y-2">
                                         <Image
                                             src={item.image}
                                             alt={item.name}
                                             fill
                                             unoptimized
                                             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
-                                            className="object-cover transition-transform duration-300 group-hover:scale-105"
+                                            className="object-cover lg:object-contain transition-transform duration-300 group-hover:scale-105"
                                         />
                                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition duration-300" />
                                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300">
